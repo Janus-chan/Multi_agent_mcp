@@ -10,19 +10,16 @@ from ocr_agent.prompt import OCR_PROMPT
 
 def create_ocr_agent() -> Agent:
     return Agent(
-        name="web_search_agent",
+        name="ocr_agent",
         model="gemini-2.0-flash",
-        description="Agent that answers user queries by performing web searches.",
+        description="Agent that processes images and extracts content using OCR capabilities.",
         instruction=OCR_PROMPT,
         tools=[
         MCPToolset(
             connection_params=StdioServerParameters(
-                    command="npx",
-                    args=["-y", "firecrawl-mcp"],
-                    env={
-                        "FIRECRAWL_API_KEY": "fc-9c8bbdeff8d248dbaec414064b0b7a9d"
-                    }
-                
+                    command="python",
+                    args=["-m", "mcp_ocr"],
+                    env={}
             )
         ),
     ],

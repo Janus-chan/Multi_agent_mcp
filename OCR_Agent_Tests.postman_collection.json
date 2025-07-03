@@ -1,0 +1,293 @@
+{
+  "info": {
+    "name": "OCR Agent Tests",
+    "description": "Test collection for the modified OCR Agent with image array processing capabilities",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8003",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Agent Card Verification",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/.well-known/agent.json",
+          "host": ["{{base_url}}"],
+          "path": [".well-known", "agent.json"]
+        },
+        "description": "Verify the agent is running and get its capabilities"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has agent information\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('name');",
+              "    pm.expect(jsonData).to.have.property('description');",
+              "    pm.expect(jsonData).to.have.property('skills');",
+              "});",
+              "",
+              "pm.test(\"Agent is OCR Image Processing Agent\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.name).to.include('OCR');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Image Array Processing",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"task_id\": \"test-task-001\",\n  \"context_id\": \"test-context-001\",\n  \"user_input\": \"[{\\\"path\\\": \\\"/path/to/invoice.jpg\\\", \\\"name\\\": \\\"Invoice Document\\\", \\\"description\\\": \\\"Company invoice for processing\\\"}, {\\\"path\\\": \\\"/path/to/screenshot.png\\\", \\\"name\\\": \\\"App Screenshot\\\", \\\"description\\\": \\\"Application interface screenshot\\\"}, \\\"/path/to/document.pdf\\\", {\\\"file\\\": \\\"/path/to/receipt.jpg\\\", \\\"name\\\": \\\"Receipt\\\", \\\"description\\\": \\\"Purchase receipt\\\"}]\",\n  \"timestamp\": {{$timestamp}}\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/a2a/ocr_agent",
+          "host": ["{{base_url}}"],
+          "path": ["a2a", "ocr_agent"]
+        },
+        "description": "Test processing of multiple images in an array"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has required structure\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('task_id');",
+              "    pm.expect(jsonData).to.have.property('response');",
+              "});",
+              "",
+              "pm.test(\"Response indicates success\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    if (jsonData.response && typeof jsonData.response === 'string') {",
+              "        const responseData = JSON.parse(jsonData.response);",
+              "        pm.expect(responseData).to.have.property('status', 'success');",
+              "        pm.expect(responseData).to.have.property('processed_images');",
+              "        pm.expect(responseData).to.have.property('results');",
+              "    }",
+              "});",
+              "",
+              "pm.test(\"All images have unique IDs\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    if (jsonData.response && typeof jsonData.response === 'string') {",
+              "        const responseData = JSON.parse(jsonData.response);",
+              "        if (responseData.results && Array.isArray(responseData.results)) {",
+              "            const ids = responseData.results.map(r => r.id);",
+              "            const uniqueIds = [...new Set(ids)];",
+              "            pm.expect(ids.length).to.equal(uniqueIds.length);",
+              "        }",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Single Text Input",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"task_id\": \"test-task-002\",\n  \"context_id\": \"test-context-002\",\n  \"user_input\": \"Please process this image for OCR analysis\",\n  \"timestamp\": {{$timestamp}}\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/a2a/ocr_agent",
+          "host": ["{{base_url}}"],
+          "path": ["a2a", "ocr_agent"]
+        },
+        "description": "Test backward compatibility with plain text input"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response processes text input\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('response');",
+              "    if (jsonData.response && typeof jsonData.response === 'string') {",
+              "        const responseData = JSON.parse(jsonData.response);",
+              "        pm.expect(responseData).to.have.property('status', 'success');",
+              "        pm.expect(responseData.processed_images).to.equal(1);",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Single Image Object",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"task_id\": \"test-task-003\",\n  \"context_id\": \"test-context-003\",\n  \"user_input\": \"{\\\"path\\\": \\\"/path/to/single_document.jpg\\\", \\\"name\\\": \\\"Single Document\\\", \\\"description\\\": \\\"A single document for OCR processing\\\"}\",\n  \"timestamp\": {{$timestamp}}\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/a2a/ocr_agent",
+          "host": ["{{base_url}}"],
+          "path": ["a2a", "ocr_agent"]
+        },
+        "description": "Test processing of a single image object"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response processes single image object\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    if (jsonData.response && typeof jsonData.response === 'string') {",
+              "        const responseData = JSON.parse(jsonData.response);",
+              "        pm.expect(responseData).to.have.property('status', 'success');",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Error Handling Test",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"task_id\": \"test-task-004\",\n  \"context_id\": \"test-context-004\",\n  \"user_input\": \"invalid json [{ broken\",\n  \"timestamp\": {{$timestamp}}\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/a2a/ocr_agent",
+          "host": ["{{base_url}}"],
+          "path": ["a2a", "ocr_agent"]
+        },
+        "description": "Test how the agent handles invalid input"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 (agent handles errors gracefully)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response contains error handling\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('response');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        },
+        "description": "Check if the server health endpoint is available"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Health endpoint responds\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

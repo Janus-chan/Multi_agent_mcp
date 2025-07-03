@@ -27,44 +27,45 @@ logger = logging.getLogger(__name__)
 @click.option(
     "--host",
     "host",
-    default=os.getenv("A2A_ELEVENLABS_HOST", "localhost"),
+    default=os.getenv("A2A_OCR_HOST", "localhost"),
     show_default=True,
-    help="Host for the ElevenLabs agent server."
+    help="Host for the OCR agent server."
 )
 @click.option(
     "--port",
     "port",
-    default=int(os.getenv("A2A_ELEVENLABS_PORT", 8003)),  # Adjusted default port
+    default=int(os.getenv("A2A_OCR_PORT", 8003)),  # Default port for OCR agent
     show_default=True,
     type=int,
-    help="Port for the ElevenLabs agent server."
+    help="Port for the OCR agent server."
 )
 
 def main(host: str, port: int) -> None:
 
-    if not os.getenv("ELEVENLABS_API_KEY"):
-        logger.warning(
-            "ELEVENLABS_API_KEY environment variable not set. "
-            "The ElevenLabs MCP server might fail to authenticate."
-        )
+    # No specific API key validation needed for OCR MCP tool
+    logger.info("Initializing OCR Agent with MCP OCR tool integration")
 
-    eleven_skill = AgentSkill(
-        id="text_to_speech",
-        name="Convert text to speech",
-        description="Takes input text and returns an audio file of the spoken text using ElevenLabs.",
-        tags=["tts", "audio", "speech", "elevenlabs"],
-        examples=["Say 'Hello, world!'", "Convert the following to speech: Today is a wonderful day."],
+    ocr_skill = AgentSkill(
+        id="image_ocr_processing",
+        name="Process images with OCR",
+        description="Takes an array of images and extracts text content using OCR, providing detailed analysis and updated metadata.",
+        tags=["ocr", "image", "text-extraction", "analysis"],
+        examples=[
+            "Process these document images for text extraction",
+            "Analyze and extract content from multiple screenshots",
+            "OCR processing for batch image analysis"
+        ],
     )
 
     agent_card = AgentCard(
-        name="ElevenLabs TTS Agent",
-        description="Provides text-to-speech services using ElevenLabs.",
+        name="OCR Image Processing Agent",
+        description="Processes arrays of images using OCR capabilities to extract text and provide detailed analysis.",
         url=f"http://{host}:{port}/",  # URL is dynamically set here
         version="1.0.0",
-        defaultInputModes=["text"],  # Agent primarily takes text
-        defaultOutputModes=["text", "audio"],  # Agent primarily outputs audio (e.g., audio/mpeg)
-        capabilities=AgentCapabilities(streaming=False, pushNotifications=False),  # TTS is typically not streaming
-        skills=[eleven_skill]
+        defaultInputModes=["text", "image"],  # Agent takes text and image inputs
+        defaultOutputModes=["text"],  # Agent outputs structured text results
+        capabilities=AgentCapabilities(streaming=False, pushNotifications=False),  # OCR is batch processing
+        skills=[ocr_skill]
     )
 
     agent = create_ocr_agent()

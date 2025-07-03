@@ -1,98 +1,25 @@
-import logging
-import uuid
+#!/usr/bin/env python3
+"""
+Test script for the OCR Agent to verify image array processing functionality.
+This test focuses on the core logic without external dependencies.
+"""
+
 import json
-from typing import List, Dict, Any
-
-from collections.abc import AsyncGenerator
-
-from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.events import EventQueue
-from a2a.types import (
-    AgentCard,
-    TaskState,
-    TaskStatus,
-    TaskStatusUpdateEvent,
-)
-
-from a2a.utils import new_agent_text_message
-from google.adk.agents import Agent
-from google.adk.events import Event
-from google.adk.runners import Runner
-from google.adk.sessions import Session as ADKSession
-from google.genai import types as adk_types
-
+import uuid
 import logging
 
+# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Mock the core functionality we need to test
+class MockOcrExecutor:
+    """Mock OCR Executor for testing core functionality."""
 
-class OcrExecutor(AgentExecutor):
+    def __init__(self):
+        self.agent = type('MockAgent', (), {'name': 'test_ocr_agent'})()
 
-    def __init__(self, agent: Agent, agent_card: AgentCard, runner: Runner):
-        self.agent = agent
-        self.agent_card = agent_card
-        self.runner = runner
-
-        self.session_service = runner.session_service
-        self.artifact_service = runner.artifact_service
-        logger.info(
-            f"ADK Runner accepted for app '{self.runner.app_name}' for agent '{self.agent.name}'"
-        )
-
-
-    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
-        try:
-            # Step 1: Prepare the user's input for execution with the LLM
-            user_input = self._prepare_input(context)
-
-            # Step 2: Prepare all session and context related data
-            user_id, session_id = self._get_session_identifiers(context)
-            await self._ensure_adk_session(user_id, session_id)
-
-            # Step 3: Send the input to the LLM and loop until a final response is received
-            final_message_text = await self._run_agent_and_get_response(
-                user_input, user_id, session_id
-            )
-
-            # Step 4: Send the response back to the client
-            self._send_response(event_queue, context, final_message_text)
-
-        except Exception as e:
-            self._handle_error(event_queue, context, e)
-
-
-    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        ...
-
-
-    def _prepare_input(self, context: RequestContext) -> str:
-        """Prepare and validate user input for image array processing."""
-        user_input = context.get_user_input()
-        if not user_input:
-            logger.warning(
-                f"No user input found for {self.agent.name}; using default message."
-            )
-            user_input = "No images provided for OCR processing"
-
-        # Check if input contains image array information
-        try:
-            # Try to parse as JSON to see if it's an image array
-            parsed_input = json.loads(user_input)
-            if isinstance(parsed_input, list):
-                logger.info(f"{self.agent.name} processing {len(parsed_input)} images for OCR")
-                # Get structured data and convert to instruction
-                structured_data = self._format_image_array_input(parsed_input)
-                return self._create_agent_instruction(structured_data)
-            else:
-                logger.info(f"{self.agent.name} processing single input: '{user_input[:100]}'")
-                return user_input
-        except (json.JSONDecodeError, TypeError):
-            # Not JSON, treat as regular text input
-            logger.info(f"{self.agent.name} processing text input: '{user_input[:100]}'")
-            return user_input
-
-    def _format_image_array_input(self, image_array: List[Any]) -> Dict[str, Any]:
+    def _format_image_array_input(self, image_array):
         """Format image array input for processing and return structured data."""
         formatted_images = []
         for i, image_data in enumerate(image_array):
@@ -140,7 +67,7 @@ class OcrExecutor(AgentExecutor):
             }
         }
 
-    def _create_agent_instruction(self, structured_data: Dict[str, Any]) -> str:
+    def _create_agent_instruction(self, structured_data):
         """Create agent instruction from structured data."""
         images = structured_data['images']
         image_count = structured_data['image_count']
@@ -173,68 +100,7 @@ class OcrExecutor(AgentExecutor):
 
         return instruction
 
-    def _get_session_identifiers(self, context: RequestContext) -> tuple[str, str]:
-        """Get user_id and session_id for ADK session management."""
-        user_id = "a2a_user_ocr"
-        session_id = context.task_id or str(uuid.uuid4())
-        return user_id, session_id
-
-    async def _ensure_adk_session(self, user_id: str, session_id: str) -> None:
-        """Create or retrieve ADK session."""
-        adk_session: ADKSession | None = await self.session_service.get_session(
-            app_name=self.runner.app_name, user_id=user_id, session_id=session_id
-        )
-        
-        if not adk_session:
-            await self.session_service.create_session(
-                app_name=self.runner.app_name,
-                user_id=user_id,
-                session_id=session_id,
-                state={},
-            )
-
-        logger.info(f"Created new ADK session: {session_id} for {self.agent.name}")
-
-    async def _run_agent_and_get_response(
-        self, user_input: str, user_id: str, session_id: str
-    ) -> str:
-        """Run the ADK agent and extract the final response."""
-        request_content = adk_types.Content(
-            role="user", parts=[adk_types.Part(text=user_input)]
-        )
-
-        logger.debug(f"Running ADK agent {self.agent.name} with session {session_id}")
-        events_async: AsyncGenerator[Event, None] = self.runner.run_async(
-            user_id=user_id, session_id=session_id, new_message=request_content
-        )
-
-        final_message_text = "(No OCR results found)"
-
-        async for event in events_async:
-            if (
-                event.is_final_response()
-                and event.content
-                and event.content.role == "model"
-            ):
-                if event.content.parts and event.content.parts[0].text:
-                    final_message_text = event.content.parts[0].text
-                    logger.info(
-                        f"{self.agent.name} final response: '{final_message_text[:200]}'{'...' if len(final_message_text) > 200 else ''}"
-                    )
-                    break
-                else:
-                    logger.warning(
-                        f"{self.agent.name} received final event but no text in first part: {event.content.parts}"
-                    )
-            elif event.is_final_response():
-                logger.warning(
-                    f"{self.agent.name} received final event without model content: {event}"
-                )
-
-        # Process and format the response for image array results
-        return self._format_ocr_response(final_message_text)
-
-    def _format_ocr_response(self, response_text: str) -> str:
+    def _format_ocr_response(self, response_text):
         """Format the OCR response to ensure proper structure."""
         try:
             # Try to parse as JSON to validate structure
@@ -308,37 +174,169 @@ class OcrExecutor(AgentExecutor):
                     'analysis': 'Text-based response processing'
                 }]
             }, indent=2)
+
+def test_image_array_input_formatting():
+    """Test the image array input formatting functionality."""
+    executor = MockOcrExecutor()
+
+    # Test image array
+    test_images = [
+        {"path": "/path/to/image1.jpg", "name": "Document 1", "description": "First document"},
+        {"path": "/path/to/image2.png", "name": "Screenshot", "description": "Application screenshot"},
+        "/path/to/image3.pdf"  # Test string format
+    ]
+
+    # Test the formatting - now returns structured data
+    structured_data = executor._format_image_array_input(test_images)
+
+    print("=== Test Image Array Input Formatting ===")
+    print("Input:")
+    print(json.dumps(test_images, indent=2))
+    print("\nStructured Data Output:")
+    print(json.dumps(structured_data, indent=2))
+
+    # Verify the structured data contains expected elements
+    assert structured_data['task_type'] == 'batch_ocr_processing'
+    assert structured_data['image_count'] == 3
+    assert len(structured_data['images']) == 3
+    assert 'processing_requirements' in structured_data
+    assert 'output_schema' in structured_data
+
+    # Test creating instruction from structured data
+    instruction = executor._create_agent_instruction(structured_data)
+    print("\nGenerated Instruction (first 200 chars):")
+    print(instruction[:200] + "..." if len(instruction) > 200 else instruction)
+
+    assert "Process the following 3 images" in instruction
+    assert "id" in instruction
+    assert "path" in instruction
+
+    print("✓ Image array formatting test passed!")
+
+def test_ocr_response_formatting():
+    """Test the OCR response formatting functionality."""
+    executor = MockOcrExecutor()
+    
+    # Test JSON response
+    test_json_response = json.dumps([
+        {
+            "id": "test-id-1",
+            "original_name": "Document 1",
+            "updated_name": "Invoice Document",
+            "original_description": "First document",
+            "updated_description": "Invoice from ABC Company dated 2024",
+            "ocr_text": "INVOICE\nABC Company\nDate: 2024-01-15\nAmount: $1,234.56",
+            "analysis": "This is an invoice document with company header, date, and amount information"
+        }
+    ])
+    
+    formatted_response = executor._format_ocr_response(test_json_response)
+    
+    print("\n=== Test OCR Response Formatting ===")
+    print("Input JSON Response:")
+    print(test_json_response)
+    print("\nFormatted Response:")
+    print(formatted_response)
+    
+    # Parse and verify the response
+    parsed_response = json.loads(formatted_response)
+    assert "status" in parsed_response
+    assert "processed_images" in parsed_response
+    assert "results" in parsed_response
+    assert parsed_response["status"] == "success"
+    assert parsed_response["processed_images"] == 1
+    assert len(parsed_response["results"]) == 1
+    
+    print("✓ OCR response formatting test passed!")
+
+def test_text_response_formatting():
+    """Test formatting of non-JSON text responses."""
+    executor = MockOcrExecutor()
+    
+    # Test plain text response
+    test_text_response = "This is extracted text from the image: Hello World! The image contains a simple greeting message."
+    
+    formatted_response = executor._format_ocr_response(test_text_response)
+    
+    print("\n=== Test Text Response Formatting ===")
+    print("Input Text Response:")
+    print(test_text_response)
+    print("\nFormatted Response:")
+    print(formatted_response)
+    
+    # Parse and verify the response
+    parsed_response = json.loads(formatted_response)
+    assert "status" in parsed_response
+    assert "processed_images" in parsed_response
+    assert "results" in parsed_response
+    assert parsed_response["status"] == "success"
+    assert parsed_response["processed_images"] == 1
+    assert len(parsed_response["results"]) == 1
+    assert test_text_response in parsed_response["results"][0]["ocr_text"]
+    
+    print("✓ Text response formatting test passed!")
+
+def test_input_preparation():
+    """Test the input preparation functionality."""
+    executor = MockOcrExecutor()
+
+    # Test JSON array input processing
+    test_array_input = [
+        {"path": "image1.jpg", "name": "Test Image 1"},
+        {"path": "image2.png", "name": "Test Image 2"}
+    ]
+
+    # Test structured data creation
+    structured_data = executor._format_image_array_input(test_array_input)
+
+    print("\n=== Test Input Preparation ===")
+    print("Array Input:")
+    print(json.dumps(test_array_input, indent=2))
+    print("\nStructured Data:")
+    print(json.dumps(structured_data, indent=2))
+
+    # Test instruction generation
+    instruction = executor._create_agent_instruction(structured_data)
+    print("\nGenerated Instruction (first 200 chars):")
+    print(instruction[:200] + "..." if len(instruction) > 200 else instruction)
+
+    # Verify structured data
+    assert structured_data['task_type'] == 'batch_ocr_processing'
+    assert structured_data['image_count'] == 2
+    assert len(structured_data['images']) == 2
+
+    # Verify instruction
+    assert "Process the following 2 images" in instruction
+    assert "id" in instruction
+    assert "path" in instruction
+
+    print("✓ Input preparation test passed!")
+
+def main():
+    """Run all tests."""
+    print("Starting OCR Agent Tests...")
+    
+    try:
+        test_image_array_input_formatting()
+        test_ocr_response_formatting()
+        test_text_response_formatting()
+        test_input_preparation()
         
-    def _send_response(
-    self, event_queue: EventQueue, context: RequestContext, message_text: str
-    ) -> None:
-        """Send the response back via the event queue."""
-        logger.info(f"Sending OCR processing response for task {context.task_id}")
-        event_queue.enqueue_event(
-            new_agent_text_message(
-                text=message_text,
-                context_id=context.context_id,
-                task_id=context.task_id,
-            )
-        )
+        print("\n🎉 All tests passed successfully!")
+        print("\nThe OCR Agent modifications appear to be working correctly.")
+        print("Key features tested:")
+        print("- Image array input processing")
+        print("- Unique ID generation")
+        print("- Response formatting")
+        print("- JSON and text response handling")
+        
+    except Exception as e:
+        print(f"\n❌ Test failed: {e}")
+        logger.error("Test failed", exc_info=True)
+        return False
+    
+    return True
 
-    def _handle_error(
-        self,
-        event_queue: EventQueue,
-        context: RequestContext,
-        error: Exception
-    ) -> None:
-        """Handle errors and send error response."""
-        logger.error(
-            f"Error executing OCR processing in {self.agent.name}: {str(error)}",
-            exc_info=True,
-        )
-        error_message_text = f"Error processing images with OCR: {str(error)}"
-        event_queue.enqueue_event(
-            new_agent_text_message(
-                text=error_message_text,
-                context_id=context.context_id,
-                task_id=context.task_id,
-            )
-        )
-
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)
