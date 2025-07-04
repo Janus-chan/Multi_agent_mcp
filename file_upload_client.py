@@ -230,20 +230,22 @@ class A2AFileUploadClient:
                                  user_id: str, timestamp: int, description: str) -> Dict[str, Any]:
         """Forward the processed files to the OCR agent using A2A JSON-RPC protocol."""
         try:
-            # Prepare A2A JSON-RPC request payload
+            # Prepare A2A JSON-RPC request payload with correct format
             a2a_payload = {
                 "jsonrpc": "2.0",
-                "method": "sendMessage",
+                "method": "message/send",
                 "params": {
                     "task_id": task_id,
                     "context_id": context_id,
                     "user_id": user_id,
                     "timestamp": timestamp,
-                    "user_input": json.dumps(files),  # Convert file array to JSON string
-                    "metadata": {
-                        "source": "file_upload_client",
-                        "description": description,
-                        "file_count": len(files)
+                    "message": {
+                        "content": json.dumps(files),  # Convert file array to JSON string
+                        "metadata": {
+                            "source": "file_upload_client",
+                            "description": description,
+                            "file_count": len(files)
+                        }
                     }
                 },
                 "id": task_id
