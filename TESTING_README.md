@@ -2,28 +2,41 @@
 
 This guide provides comprehensive instructions for testing the modified OCR agent that processes image arrays.
 
-## 🚀 Quick Start
+## 🚀 Quick Start Options
 
-### Option 1: Automated Testing with A2A Client (Recommended)
+### Option 1: File Upload Testing (Recommended for Real Files)
 
 1. **Install dependencies**:
    ```bash
-   pip install aiohttp requests
+   pip install aiohttp requests aiofiles
    ```
 
-2. **Start the OCR server**:
+2. **Start the complete system**:
+   ```bash
+   cd Multi_agent_mcp
+   python start_complete_system.py
+   ```
+
+3. **Test with Postman file uploads**:
+   - Import `OCR_File_Upload_Tests.postman_collection.json`
+   - Upload actual image files
+   - See `FILE_UPLOAD_TESTING_GUIDE.md` for details
+
+### Option 2: JSON API Testing
+
+1. **Start the OCR server**:
    ```bash
    cd Multi_agent_mcp
    python start_ocr_server.py
    ```
 
-3. **Run the test client** (in a new terminal):
+2. **Run automated tests**:
    ```bash
    cd Multi_agent_mcp
    python test_a2a_client.py
    ```
 
-### Option 2: Manual Testing with Postman
+### Option 3: Manual JSON Testing with Postman
 
 1. **Start the OCR server**:
    ```bash
@@ -32,18 +45,23 @@ This guide provides comprehensive instructions for testing the modified OCR agen
    ```
 
 2. **Import Postman collection**:
-   - Open Postman
    - Import `OCR_Agent_Tests.postman_collection.json`
-   - Run the collection
+   - Test with JSON payloads
 
 ## 📁 Testing Files Overview
 
 | File | Purpose |
 |------|---------|
-| `test_a2a_client.py` | Automated A2A client for comprehensive testing |
-| `start_ocr_server.py` | Simple server starter with health monitoring |
-| `POSTMAN_TESTING_GUIDE.md` | Detailed Postman testing instructions |
-| `OCR_Agent_Tests.postman_collection.json` | Ready-to-import Postman collection |
+| **File Upload Testing** | |
+| `file_upload_client.py` | A2A client that handles multipart file uploads |
+| `start_complete_system.py` | Starts both OCR agent and file upload client |
+| `FILE_UPLOAD_TESTING_GUIDE.md` | Detailed file upload testing instructions |
+| `OCR_File_Upload_Tests.postman_collection.json` | Postman collection for file uploads |
+| **JSON API Testing** | |
+| `test_a2a_client.py` | Automated A2A client for JSON API testing |
+| `start_ocr_server.py` | Simple OCR server starter with health monitoring |
+| `POSTMAN_TESTING_GUIDE.md` | Detailed JSON API testing instructions |
+| `OCR_Agent_Tests.postman_collection.json` | Postman collection for JSON API |
 | `test_ocr_agent.py` | Unit tests for core functionality |
 
 ## 🧪 Test Scenarios
