@@ -18,6 +18,7 @@ import aiohttp
 from aiohttp import web, FormData
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response
+from aiohttp.multipart import BodyPartReader
 import aiofiles
 from aiohttp.multipart import MultipartReader, BodyPartReader
 
@@ -136,13 +137,15 @@ class A2AFileUploadClient:
                         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{field_filename}")
                         temp_files.append(temp_file.name)
                         
+                        # Read the entire file content
+                        file_content = await field.read()
+
+                        # Write to temporary file
                         async with aiofiles.open(temp_file.name, 'wb') as f:
-                            async for chunk in field:
-                                # Ensure chunk is bytes
-                                if isinstance(chunk, bytes):
-                                    await f.write(chunk)
-                                else:
-                                    logger.warning(f"Unexpected chunk type: {type(chunk)}")
+                            await f.write(file_content)
+
+                        # Get file size
+                        file_size = len(file_content)
                         
                         # Create file metadata
                         file_info = {
@@ -150,11 +153,12 @@ class A2AFileUploadClient:
                             "name": field_filename,
                             "description": f"Uploaded file: {field_filename}",
                             "original_filename": field_filename,
-                            "upload_timestamp": timestamp
+                            "upload_timestamp": timestamp,
+                            "file_size": file_size
                         }
                         files.append(file_info)
-                        
-                        logger.info(f"Received file: {field_filename} ({os.path.getsize(temp_file.name)} bytes)")
+
+                        logger.info(f"Received file: {field_filename} ({file_size} bytes)")
                 
                 elif field_name == 'user_id':
                     # Custom user ID
@@ -222,22 +226,27 @@ class A2AFileUploadClient:
                 "task_id": task_id if 'task_id' in locals() else None
             }, status=500)
     
-    async def forward_to_ocr_agent(self, files: List[Dict], task_id: str, context_id: str, 
+    async def forward_to_ocr_agent(self, files: List[Dict], task_id: str, context_id: str,
                                  user_id: str, timestamp: int, description: str) -> Dict[str, Any]:
-        """Forward the processed files to the OCR agent using A2A protocol."""
+        """Forward the processed files to the OCR agent using A2A JSON-RPC protocol."""
         try:
-            # Prepare A2A request payload
+            # Prepare A2A JSON-RPC request payload
             a2a_payload = {
-                "task_id": task_id,
-                "context_id": context_id,
-                "user_id": user_id,
-                "timestamp": timestamp,
-                "user_input": json.dumps(files),  # Convert file array to JSON string
-                "metadata": {
-                    "source": "file_upload_client",
-                    "description": description,
-                    "file_count": len(files)
-                }
+                "jsonrpc": "2.0",
+                "method": "sendMessage",
+                "params": {
+                    "task_id": task_id,
+                    "context_id": context_id,
+                    "user_id": user_id,
+                    "timestamp": timestamp,
+                    "user_input": json.dumps(files),  # Convert file array to JSON string
+                    "metadata": {
+                        "source": "file_upload_client",
+                        "description": description,
+                        "file_count": len(files)
+                    }
+                },
+                "id": task_id
             }
             
             headers = {
