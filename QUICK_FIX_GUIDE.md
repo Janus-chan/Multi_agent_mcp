@@ -5,7 +5,7 @@
 ### **1. A2A JSON-RPC Format Error**
 **Problem**: The file upload client was sending data in wrong format, causing validation errors.
 
-**Solution**: Updated `forward_to_ocr_agent` method to use proper A2A JSON-RPC format:
+**Solution**: Updated `forward_to_ocr_agent` method to use complete A2A JSON-RPC format:
 ```json
 {
   "jsonrpc": "2.0",
@@ -16,7 +16,13 @@
     "user_id": "user",
     "timestamp": 1234567890,
     "message": {
-      "content": "[file_array]",
+      "messageId": "uuid",
+      "role": "user",
+      "parts": [
+        {
+          "text": "[file_array_json]"
+        }
+      ],
       "metadata": {...}
     }
   },
@@ -54,10 +60,10 @@ cd Multi_agent_mcp
 python file_upload_client.py --port 8004 --ocr-agent-url http://localhost:8003
 ```
 
-### **Step 2: Test Correct A2A Format**
+### **Step 2: Test Final A2A Format**
 ```bash
 cd Multi_agent_mcp
-python test_correct_a2a.py
+python test_final_a2a.py
 ```
 
 **Expected Output:**
