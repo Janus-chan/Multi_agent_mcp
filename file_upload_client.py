@@ -125,22 +125,29 @@ class A2AFileUploadClient:
                         # Save file temporarily
                         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{field.filename}")
                         temp_files.append(temp_file.name)
-                        
+
+                        # Read file content
+                        file_content = await field.read()
+
+                        # Write to temporary file
                         async with aiofiles.open(temp_file.name, 'wb') as f:
-                            async for chunk in field:
-                                await f.write(chunk)
-                        
+                            await f.write(file_content)
+
+                        # Get file size
+                        file_size = len(file_content)
+
                         # Create file metadata
                         file_info = {
                             "path": temp_file.name,
                             "name": field.filename,
                             "description": f"Uploaded file: {field.filename}",
                             "original_filename": field.filename,
-                            "upload_timestamp": timestamp
+                            "upload_timestamp": timestamp,
+                            "file_size": file_size
                         }
                         files.append(file_info)
-                        
-                        logger.info(f"Received file: {field.filename} ({os.path.getsize(temp_file.name)} bytes)")
+
+                        logger.info(f"Received file: {field.filename} ({file_size} bytes)")
                 
                 elif field.name == 'user_id':
                     # Custom user ID

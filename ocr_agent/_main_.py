@@ -93,13 +93,23 @@ def main(host: str, port: int) -> None:
         agent_card=agent_card,
         http_handler=request_handler,
     )
-    logger.info(f"Starting ElevenLabs Agent server on http://{host}:{port}")
+
+    # Build the app with custom endpoint paths
+    app = a2a_app.build(
+        agent_card_url="/.well-known/agent.json",
+        rpc_url="/a2a/ocr_agent",
+        extended_agent_card_url="/agent/authenticatedExtendedCard"
+    )
+
+    logger.info(f"Starting OCR Agent server on http://{host}:{port}")
     logger.info(f"Agent Name: {agent_card.name}, Version: {agent_card.version}")
+    logger.info(f"A2A RPC Endpoint: http://{host}:{port}/a2a/ocr_agent")
+    logger.info(f"Agent Card: http://{host}:{port}/.well-known/agent.json")
     if agent_card.skills:
         for skill in agent_card.skills:
             logger.info(f" Skill: {skill.name} (ID: {skill.id}, Tags: {skill.tags})")
 
-    uvicorn.run(a2a_app.build(), host=host, port=port)
+    uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
         main()
