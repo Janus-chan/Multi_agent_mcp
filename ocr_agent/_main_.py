@@ -1,6 +1,13 @@
 import logging
 import os
 
+# Add parent directory to Python path for imports
+from pathlib import Path
+
+parent_dir = Path(__file__).parent.parent
+import sys
+sys.path.insert(0, str(parent_dir))
+
 import click
 import uvicorn
 
@@ -16,8 +23,14 @@ from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from ocr_agent.agent_executor import OcrExecutor
-from ocr_agent.agent import create_ocr_agent
+try:
+    # Try absolute imports first (when run from parent directory)
+    from ocr_agent.agent_executor import OcrExecutor
+    from ocr_agent.agent import create_ocr_agent
+except ImportError:
+    # Fall back to relative imports (when run from ocr_agent directory)
+    from agent_executor import OcrExecutor
+    from agent import create_ocr_agent
 
 # Basic logging configuration
 logging.basicConfig(level=logging.INFO)

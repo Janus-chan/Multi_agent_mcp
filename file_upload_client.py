@@ -19,6 +19,7 @@ from aiohttp import web, FormData
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 import aiofiles
+from aiohttp.multipart import MultipartReader, BodyPartReader
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -119,43 +120,59 @@ class A2AFileUploadClient:
             temp_files = []  # Track temporary files for cleanup
             
             async for field in reader:
-                if field.name == 'files':
+                # Check if field is None or is not a BodyPartReader
+                if field is None or not isinstance(field, BodyPartReader):
+                    continue
+                    
+                field_name = getattr(field, 'name', None)
+                if field_name is None:
+                    continue
+                
+                if field_name == 'files':
                     # Handle uploaded file
-                    if field.filename:
+                    field_filename = getattr(field, 'filename', None)
+                    if field_filename:
                         # Save file temporarily
-                        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{field.filename}")
+                        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{field_filename}")
                         temp_files.append(temp_file.name)
-
-                        # Read file content
-                        file_content = await field.read()
-
-                        # Write to temporary file
+                        
                         async with aiofiles.open(temp_file.name, 'wb') as f:
-                            await f.write(file_content)
-
-                        # Get file size
-                        file_size = len(file_content)
-
+                            async for chunk in field:
+                                # Ensure chunk is bytes
+                                if isinstance(chunk, bytes):
+                                    await f.write(chunk)
+                                else:
+                                    logger.warning(f"Unexpected chunk type: {type(chunk)}")
+                        
                         # Create file metadata
                         file_info = {
                             "path": temp_file.name,
-                            "name": field.filename,
-                            "description": f"Uploaded file: {field.filename}",
-                            "original_filename": field.filename,
-                            "upload_timestamp": timestamp,
-                            "file_size": file_size
+                            "name": field_filename,
+                            "description": f"Uploaded file: {field_filename}",
+                            "original_filename": field_filename,
+                            "upload_timestamp": timestamp
                         }
                         files.append(file_info)
-
-                        logger.info(f"Received file: {field.filename} ({file_size} bytes)")
+                        
+                        logger.info(f"Received file: {field_filename} ({os.path.getsize(temp_file.name)} bytes)")
                 
-                elif field.name == 'user_id':
+                elif field_name == 'user_id':
                     # Custom user ID
-                    user_id = (await field.text()).strip()
-                    
-                elif field.name == 'description':
+                    try:
+                        content = await field.read()
+                        if isinstance(content, bytes):
+                            user_id = content.decode().strip()
+                    except Exception as e:
+                        logger.warning(f"Failed to read user_id field: {e}")
+                        
+                elif field_name == 'description':
                     # Custom description
-                    description = (await field.text()).strip()
+                    try:
+                        content = await field.read()
+                        if isinstance(content, bytes):
+                            description = content.decode().strip()
+                    except Exception as e:
+                        logger.warning(f"Failed to read description field: {e}")
             
             if not files:
                 return web.json_response({
