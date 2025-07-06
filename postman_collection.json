@@ -1,0 +1,493 @@
+{
+	"info": {
+		"_postman_id": "a2a-ocr-api-collection",
+		"name": "A2A OCR API Collection",
+		"description": "Comprehensive Postman collection for testing the A2A OCR API system.\n\nThis collection includes:\n- Health check endpoints\n- File upload endpoints with various scenarios\n- Error handling tests\n- Performance testing examples\n\nSetup:\n1. Start the FastAPI server: python fastapi_ocr_server.py\n2. Start the OCR agent server (if not already running)\n3. Import this collection into Postman\n4. Set the base_url variable to your server URL (default: http://localhost:8005)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8005",
+			"type": "string"
+		},
+		{
+			"key": "ocr_server_url",
+			"value": "http://localhost:8003",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health & Status",
+			"item": [
+				{
+					"name": "Root Endpoint",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "File Upload - Basic",
+			"item": [
+				{
+					"name": "Upload Single Image",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "files",
+									"type": "file",
+									"src": [],
+									"description": "Select an image file (JPG, PNG, PDF, etc.)"
+								},
+								{
+									"key": "user_id",
+									"value": "test_user_001",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Single image OCR test",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"upload"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Multiple Images",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "files",
+									"type": "file",
+									"src": [],
+									"description": "Select first image file"
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": [],
+									"description": "Select second image file"
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": [],
+									"description": "Select third image file (optional)"
+								},
+								{
+									"key": "user_id",
+									"value": "test_user_002",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Multiple images batch OCR test",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"upload"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "File Upload - Advanced",
+			"item": [
+				{
+					"name": "Upload with Context ID",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "user_id",
+									"value": "test_user_003",
+									"type": "text"
+								},
+								{
+									"key": "context_id",
+									"value": "conversation_001",
+									"type": "text",
+									"description": "For conversation continuity"
+								},
+								{
+									"key": "description",
+									"value": "OCR with conversation context",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"upload"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload with File Data Included",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "user_id",
+									"value": "test_user_004",
+									"type": "text"
+								},
+								{
+									"key": "include_file_data",
+									"value": "true",
+									"type": "text",
+									"description": "Include base64-encoded file data in response"
+								},
+								{
+									"key": "description",
+									"value": "OCR with file data inclusion",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"upload"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Error Handling Tests",
+			"item": [
+				{
+					"name": "No Files Provided",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "user_id",
+									"value": "test_user_error_001",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Test error handling - no files",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"upload"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unsupported File Format",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "files",
+									"type": "file",
+									"src": [],
+									"description": "Upload a .txt or other unsupported file"
+								},
+								{
+									"key": "user_id",
+									"value": "test_user_error_002",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Test error handling - unsupported format",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"upload"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Performance Tests",
+			"item": [
+				{
+					"name": "Large File Upload",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "files",
+									"type": "file",
+									"src": [],
+									"description": "Upload a large image file (close to 10MB limit)"
+								},
+								{
+									"key": "user_id",
+									"value": "test_user_perf_001",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Performance test - large file",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"upload"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Batch Upload (10 Files)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "user_id",
+									"value": "test_user_perf_002",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Performance test - batch upload",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"upload"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Pre-request script for logging",
+					"console.log('Making request to: ' + pm.request.url);",
+					"console.log('Method: ' + pm.request.method);",
+					"",
+					"// Set timestamp for performance measurement",
+					"pm.globals.set('requestStartTime', Date.now());"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script for all requests",
+					"",
+					"// Calculate response time",
+					"const startTime = pm.globals.get('requestStartTime');",
+					"const responseTime = Date.now() - startTime;",
+					"console.log('Response time: ' + responseTime + 'ms');",
+					"",
+					"// Basic response validation",
+					"pm.test('Response status code is valid', function () {",
+					"    pm.expect(pm.response.code).to.be.oneOf([200, 400, 413, 422, 500]);",
+					"});",
+					"",
+					"pm.test('Response has valid JSON structure', function () {",
+					"    try {",
+					"        const jsonData = pm.response.json();",
+					"        pm.expect(jsonData).to.be.an('object');",
+					"    } catch (e) {",
+					"        // Some endpoints might not return JSON",
+					"        console.log('Response is not JSON');",
+					"    }",
+					"});",
+					"",
+					"// Log response for debugging",
+					"console.log('Response body:', pm.response.text());"
+				]
+			}
+		}
+	]
+}

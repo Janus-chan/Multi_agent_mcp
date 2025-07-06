@@ -1,0 +1,32 @@
+# FastAPI OCR Server Requirements
+# Install with: pip install -r requirements_fastapi_server.txt
+
+# Core FastAPI dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# HTTP client dependencies (for A2A client)
+httpx>=0.25.0
+httpx-sse>=0.4.0
+
+# Data validation and serialization
+pydantic>=2.0.0
+
+# CLI support
+click>=8.0.0
+
+# A2A client dependencies
+# The python-a2a library (assuming it's available in the local environment)
+# If the a2a package is not installed, you may need to install it from the local source:
+# pip install -e ./src  # or wherever the a2a package source is located
+
+# Optional: Enhanced logging and development
+rich>=13.0.0
+
+# Development dependencies (optional)
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+httpx-test>=0.1.0
+black>=23.0.0
+mypy>=1.0.0
